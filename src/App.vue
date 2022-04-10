@@ -172,13 +172,17 @@ const numberButtons = ref<calculatorButton[]>([
 ]);
 
 function calculate(value: string) {
-  // trim value
-  value = value.replace(/\s/g, "");
+  try {
+    // trim value
+    value = value.replace(/\s/g, "");
 
-  // replace x to js's Multiplication *
-  value = value.replace(/x/g, "*");
+    // replace x to js's Multiplication *
+    value = value.replace(/x/g, "*");
 
-  inputValue.value = eval(value);
+    inputValue.value = eval(value);
+  } catch (e) {
+    alert("input format is error");
+  }
 }
 </script>
 
