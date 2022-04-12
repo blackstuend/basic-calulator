@@ -156,9 +156,7 @@ const numberButtons = ref<calculatorButton[]>([
   {
     text: "=",
     clickMethod: () => {
-      calculate(inputValue.value);
-
-      inputRef.value?.focus();
+      startCalculate();
     },
   },
   {
@@ -171,17 +169,119 @@ const numberButtons = ref<calculatorButton[]>([
   },
 ]);
 
-function calculate(value: string) {
+// calculate inputRef's value
+function startCalculate(): void {
+  // trim space
+  let calculateString = inputValue.value.replace(/\s/g, "");
+
+  // replace x to *
+  calculateString = calculateString.replace(/x/g, "*");
+
+  let result = calculate(calculateString);
+
+  // calculator failed, show alert
+  if (isNaN(result)) {
+    alert("format is error");
+
+    inputValue.value = "";
+    return;
+  }
+
+  inputValue.value = result.toString();
+
+  inputRef.value?.focus();
+}
+
+// basic operator
+// e.x: 1 + 5 * 8 = 41
+function basicOperator(value: string): number {
+  const reg = /(\d+\.*\d*|\+|\/|\*|-|%)/g;
+  const arr = value.match(reg);
+
+  if (!arr) {
+    return NaN;
+  } else if (arr.length === 1) {
+    return Number(arr[0]);
+  }
+
   try {
-    // trim value
-    value = value.replace(/\s/g, "");
+    // handle advance operator
+    if (arr?.length) {
+      for (let i = 0; i < arr.length; i++) {
+        if (arr[i] === "*") {
+          let result = Number(arr[i - 1]) * Number(arr[i + 1]);
+          arr.splice(i - 1, 3, result.toString());
+          i--;
+        } else if (arr[i] === "/") {
+          let result = Number(arr[i - 1]) / Number(arr[i + 1]);
+          arr.splice(i - 1, 3, result.toString());
+          i--;
+        } else if (arr[i] === "%") {
+          let result = Number(arr[i - 1]) % Number(arr[i + 1]);
+          arr.splice(i - 1, 3, result.toString());
+          i--;
+        }
+      }
+    }
 
-    // replace x to js's Multiplication *
-    value = value.replace(/x/g, "*");
+    // handle basic operator
+    if (arr?.length) {
+      for (let i = 0; i < arr.length; i++) {
+        if (arr[i] === "+") {
+          let result = Number(arr[i - 1]) + Number(arr[i + 1]);
+          arr.splice(i - 1, 3, result.toString());
+          i--;
+        } else if (arr[i] === "-") {
+          let result = Number(arr[i - 1]) - Number(arr[i + 1]);
+          arr.splice(i - 1, 3, result.toString());
+          i--;
+        }
+      }
+    }
 
-    inputValue.value = eval(value);
+    return Number(arr[0]);
   } catch (e) {
-    alert("input format is error");
+    return NaN;
+  }
+}
+
+// calculate
+function calculate(value: string): number {
+  try {
+    // handle bucket
+    let bucketsCount = 0;
+    let inBucketsText = "";
+    let basicValue = "";
+
+    for (let text of value) {
+      if (text === "(") {
+        if (bucketsCount > 0) {
+          inBucketsText += text;
+        }
+
+        bucketsCount++;
+      } else if (text === ")") {
+        if (bucketsCount <= 0) {
+          throw new Error("buckets not match");
+        } else {
+          bucketsCount--;
+
+          if (bucketsCount > 0) {
+            inBucketsText += text;
+          } else if (bucketsCount === 0) {
+            basicValue += calculate(inBucketsText);
+          }
+        }
+      } else if (bucketsCount > 0) {
+        inBucketsText += text;
+      } else {
+        basicValue += text;
+      }
+    }
+
+    return basicOperator(basicValue);
+  } catch (e) {
+    return NaN;
   }
 }
 </script>
@@ -193,6 +293,7 @@ function calculate(value: string) {
       class="calculator-input"
       ref="inputRef"
       v-model="inputValue"
+      @keyup.enter="startCalculate"
     />
     <ul class="calculator-buttonList">
       <li
@@ -242,13 +343,13 @@ function calculate(value: string) {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   margin: 0 auto;
-  gap: 1rem;
+  gap: 0.875rem;
 }
 
 .calculator-buttonList-button {
   border: 1px solid #ccc;
   border-radius: 5px;
-  padding: 1rem 2rem;
+  padding: 0.875rem 1rem;
   list-style: none;
   text-align: center;
   font-weight: 700;
